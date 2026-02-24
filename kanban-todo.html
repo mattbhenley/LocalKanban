@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Board</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --surface: #ffffff;
+    --border: #e2ddd8;
+    --border-dark: #ccc8c2;
+    --text: #1a1714;
+    --text-muted: #8c8580;
+    --text-dim: #5c5855;
+    --accent-todo: #e85d3a;
+    --accent-progress: #2563eb;
+    --accent-done: #16a34a;
+    --card-bg: #fdfcfb;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+    --shadow-hover: 0 4px 16px rgba(0,0,0,0.12), 0 8px 32px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Subtle dot pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, #c8c4be 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 2;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 0 var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-mark {
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+  }
+
+  .logo-bar {
+    width: 6px;
+    border-radius: 3px;
+  }
+
+  .logo-bar:nth-child(1) { height: 14px; background: var(--accent-todo); }
+  .logo-bar:nth-child(2) { height: 20px; background: var(--accent-progress); }
+  .logo-bar:nth-child(3) { height: 26px; background: var(--accent-done); }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.4px;
+  }
+
+  .header-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-top: 1px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 6px;
+  }
+
+  .stat-pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    background: var(--bg);
+  }
+
+  .add-btn {
+    background: var(--text);
+    color: white;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    letter-spacing: -0.2px;
+  }
+
+  .add-btn:hover { background: #333; transform: translateY(-1px); box-shadow: var(--shadow); }
+
+  .board {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    padding: 28px 36px;
+    min-height: calc(100vh - 73px);
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column;
+    min-height: 500px;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 0 4px;
+  }
+
+  .col-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .col-stripe {
+    width: 14px;
+    height: 4px;
+    border-radius: 2px;
+  }
+
+  .col-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .col-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--border);
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
+  .col-add-btn {
+    background: none;
+    border: 1.5px dashed var(--border-dark);
+    color: var(--text-muted);
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+
+  .col-add-btn:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+    background: white;
+  }
+
+  .cards-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(255,255,255,0.5);
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    min-height: 400px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .cards-container.drag-over {
+    border-color: var(--accent-progress);
+    background: rgba(37,99,235,0.03);
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: grab;
+    box-shadow: var(--shadow);
+    transition: all 0.15s;
+    animation: cardIn 0.2s ease forwards;
+    position: relative;
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:hover {
+    border-color: var(--border-dark);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: 0.35; transform: rotate(1.5deg); }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .card:hover .card-actions { opacity: 1; }
+
+  .card-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: all 0.1s;
+    line-height: 1.2;
+  }
+
+  .card-btn:hover { border-color: var(--border-dark); color: var(--text); background: white; }
+  .card-btn.delete:hover { border-color: #fca5a5; color: var(--accent-todo); background: #fff5f5; }
+
+  .card-notes {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    border: 1px solid;
+  }
+
+  .tag-bug { background: #fff1f0; color: #c0392b; border-color: #fecaca; }
+  .tag-feature { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .tag-refactor { background: #faf5ff; color: #7e22ce; border-color: #e9d5ff; }
+  .tag-review { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+  .tag-docs { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+  .tag-chore { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+
+  .card-move {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .card:hover .card-move { opacity: 1; }
+
+  .move-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    transition: all 0.1s;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .move-btn:hover { border-color: var(--border-dark); color: var(--text); background: white; }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+    gap: 6px;
+    opacity: 0.6;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,23,20,0.5);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.15s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 440px;
+    max-width: 95vw;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.15);
+    animation: slideUp 0.2s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 22px;
+    letter-spacing: -0.3px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+  }
+
+  input, textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input:focus, textarea:focus, select:focus { border-color: var(--accent-progress); }
+
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  select option { background: white; }
+
+  .modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  .btn-cancel {
+    background: none;
+    border: 1.5px solid var(--border);
+    color: var(--text-dim);
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-cancel:hover { border-color: var(--border-dark); color: var(--text); }
+
+  .btn-save {
+    background: var(--text);
+    color: white;
+    border: none;
+    padding: 9px 22px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-save:hover { opacity: 0.8; }
+
+  @media (max-width: 768px) {
+    .board { grid-template-columns: 1fr; padding: 16px; }
+    header { padding: 16px 20px; flex-wrap: wrap; gap: 10px; }
+    .stats { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <div class="logo-bar"></div>
+      <div class="logo-bar"></div>
+      <div class="logo-bar"></div>
+    </div>
+    <div>
+      <h1>Task Board</h1>
+      <div class="header-meta">Drag cards to move between columns</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="stats" id="stats-pills"></div>
+    <button class="add-btn" onclick="openModal()">+ New Task</button>
+  </div>
+</header>
+
+<div class="board">
+  <div class="column" id="col-todo">
+    <div class="col-header">
+      <div class="col-title-group">
+        <div class="col-stripe" style="background: var(--accent-todo);"></div>
+        <span class="col-title">To Do</span>
+        <span class="col-count" id="count-todo">0</span>
+      </div>
+      <button class="col-add-btn" onclick="openModal('todo')" title="Add task">+</button>
+    </div>
+    <div class="cards-container" id="cards-todo"
+      ondragover="onDragOver(event)" ondrop="onDrop(event,'todo')" ondragleave="onDragLeave(event)">
+    </div>
+  </div>
+
+  <div class="column" id="col-in-progress">
+    <div class="col-header">
+      <div class="col-title-group">
+        <div class="col-stripe" style="background: var(--accent-progress);"></div>
+        <span class="col-title">In Progress</span>
+        <span class="col-count" id="count-in-progress">0</span>
+      </div>
+      <button class="col-add-btn" onclick="openModal('in-progress')" title="Add task">+</button>
+    </div>
+    <div class="cards-container" id="cards-in-progress"
+      ondragover="onDragOver(event)" ondrop="onDrop(event,'in-progress')" ondragleave="onDragLeave(event)">
+    </div>
+  </div>
+
+  <div class="column" id="col-done">
+    <div class="col-header">
+      <div class="col-title-group">
+        <div class="col-stripe" style="background: var(--accent-done);"></div>
+        <span class="col-title">Done</span>
+        <span class="col-count" id="count-done">0</span>
+      </div>
+      <button class="col-add-btn" onclick="openModal('done')" title="Add task">+</button>
+    </div>
+    <div class="cards-container" id="cards-done"
+      ondragover="onDragOver(event)" ondrop="onDrop(event,'done')" ondragleave="onDragLeave(event)">
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal">
+    <h2 id="modal-title">New Task</h2>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="input-title" placeholder="What needs to be done?" />
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="input-notes" placeholder="Add details, links, or context..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Tag</label>
+      <select id="input-tag">
+        <option value="">— none —</option>
+        <option value="feature">feature</option>
+        <option value="bug">bug</option>
+        <option value="refactor">refactor</option>
+        <option value="review">review</option>
+        <option value="docs">docs</option>
+        <option value="chore">chore</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Column</label>
+      <select id="input-col">
+        <option value="todo">To Do</option>
+        <option value="in-progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveTask()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const COLS = ['todo','in-progress','done'];
+  const COL_LABELS = { 'todo': 'To Do', 'in-progress': 'In Progress', 'done': 'Done' };
+  const COL_NEXT = { 'todo': 'in-progress', 'in-progress': 'done', 'done': null };
+  const COL_PREV = { 'todo': null, 'in-progress': 'todo', 'done': 'in-progress' };
+
+  let tasks = JSON.parse(localStorage.getItem('taskboard-v2-tasks') || '[]');
+  let editingId = null;
+  let dragId = null;
+
+  function saveTasks() { localStorage.setItem('taskboard-v2-tasks', JSON.stringify(tasks)); }
+
+  function render() {
+    COLS.forEach(col => {
+      const container = document.getElementById('cards-' + col);
+      const colTasks = tasks.filter(t => t.col === col);
+      document.getElementById('count-' + col).textContent = colTasks.length;
+
+      if (colTasks.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div>No tasks yet</div><div style="font-size:11px;margin-top:4px;">Drop here or click +</div></div>`;
+        return;
+      }
+
+      container.innerHTML = colTasks.map(t => {
+        const prev = COL_PREV[col];
+        const next = COL_NEXT[col];
+        return `
+        <div class="card" draggable="true" data-id="${t.id}"
+          ondragstart="onDragStart(event,'${t.id}')"
+          ondragend="onDragEnd(event)">
+          <div class="card-top">
+            <div class="card-title">${escHtml(t.title)}</div>
+            <div class="card-actions">
+              <button class="card-btn" onclick="editTask('${t.id}')">Edit</button>
+              <button class="card-btn delete" onclick="deleteTask('${t.id}')">✕</button>
+            </div>
+          </div>
+          ${t.notes ? `<div class="card-notes">${escHtml(t.notes)}</div>` : ''}
+          <div class="card-footer">
+            ${t.tag ? `<span class="card-tag tag-${t.tag}">${t.tag}</span>` : '<span></span>'}
+            <div class="card-move">
+              ${prev ? `<button class="move-btn" onclick="moveTask('${t.id}','${prev}')" title="Move to ${COL_LABELS[prev]}">← ${COL_LABELS[prev]}</button>` : ''}
+              ${next ? `<button class="move-btn" onclick="moveTask('${t.id}','${next}')" title="Move to ${COL_LABELS[next]}">${COL_LABELS[next]} →</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    });
+
+    // Stats pills
+    const total = tasks.length;
+    const done = tasks.filter(t => t.col === 'done').length;
+    document.getElementById('stats-pills').innerHTML = `
+      <span class="stat-pill">${total} total</span>
+      ${total > 0 ? `<span class="stat-pill">${done}/${total} done</span>` : ''}
+    `;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function moveTask(id, col) {
+    const t = tasks.find(x => x.id === id);
+    if (t) { t.col = col; saveTasks(); render(); }
+  }
+
+  function openModal(col) {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'New Task';
+    document.getElementById('input-title').value = '';
+    document.getElementById('input-notes').value = '';
+    document.getElementById('input-tag').value = '';
+    document.getElementById('input-col').value = col || 'todo';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('input-title').focus(), 50);
+  }
+
+  function editTask(id) {
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Edit Task';
+    document.getElementById('input-title').value = t.title;
+    document.getElementById('input-notes').value = t.notes || '';
+    document.getElementById('input-tag').value = t.tag || '';
+    document.getElementById('input-col').value = t.col;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('input-title').focus(), 50);
+  }
+
+  function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+  function closeModalOnOverlay(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+
+  function saveTask() {
+    const title = document.getElementById('input-title').value.trim();
+    if (!title) { document.getElementById('input-title').focus(); return; }
+    const notes = document.getElementById('input-notes').value.trim();
+    const tag = document.getElementById('input-tag').value;
+    const col = document.getElementById('input-col').value;
+
+    if (editingId) {
+      const t = tasks.find(x => x.id === editingId);
+      if (t) { t.title = title; t.notes = notes; t.tag = tag; t.col = col; }
+    } else {
+      tasks.push({ id: Date.now().toString(), title, notes, tag, col });
+    }
+
+    saveTasks(); render(); closeModal();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks(); render();
+  }
+
+  function onDragStart(e, id) {
+    dragId = id;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => {
+      const el = document.querySelector(`[data-id="${id}"]`);
+      if (el) el.classList.add('dragging');
+    }, 0);
+  }
+
+  function onDragEnd() {
+    document.querySelectorAll('.card.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.cards-container.drag-over').forEach(el => el.classList.remove('drag-over'));
+  }
+
+  function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!e.currentTarget.classList.contains('drag-over')) e.currentTarget.classList.add('drag-over');
+  }
+
+  function onDragLeave(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over');
+  }
+
+  function onDrop(e, col) {
+    e.preventDefault();
+    if (dragId) { moveTask(dragId, col); dragId = null; }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'n' && !e.target.matches('input,textarea,select')) openModal();
+  });
+
+  render();
+</script>
+</body>
+</html>
