@@ -11,3 +11,5 @@ A few things worth noting:
 
 Both boards save to localStorage independently, so you can use both without them interfering with each other!
 
+![kanban](https://github.com/mattbhenley/Images/blob/master/kanbantodo.png)
+
